@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workflow de Suporte · Just</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --just-blue: #2E2D87;
+    --just-blue-dark: #1F1E5E;
+    --just-blue-light: #4A48B8;
+    --just-coral: #FF6B6B;
+    --just-coral-light: #FF8E8E;
+    --bg: #F7F7FB;
+    --bg-card: #FFFFFF;
+    --text: #1A1A2E;
+    --text-muted: #6B6B85;
+    --border: #E5E5F0;
+    --shadow: 0 10px 40px rgba(46, 45, 135, 0.08);
+    --shadow-hover: 0 20px 60px rgba(46, 45, 135, 0.15);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+
+  .deck { position: fixed; inset: 0; perspective: 1800px; overflow: hidden; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 80px 64px;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.6s ease, transform 0.9s cubic-bezier(0.77, 0, 0.175, 1), filter 0.6s ease;
+    transform-style: preserve-3d;
+    overflow-y: auto;
+  }
+  .slide::-webkit-scrollbar { width: 8px; }
+  .slide::-webkit-scrollbar-track { background: transparent; }
+  .slide::-webkit-scrollbar-thumb { background: rgba(46,45,135,0.25); border-radius: 4px; }
+  .slide::-webkit-scrollbar-thumb:hover { background: rgba(46,45,135,0.45); }
+  .slide.active {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transform: translateX(0) rotateY(0) scale(1);
+    filter: blur(0); z-index: 2;
+  }
+  .slide.next-out { opacity: 0; transform: translateX(-30%) rotateY(-12deg) scale(0.9); filter: blur(8px); z-index: 1; }
+  .slide.next-in  { opacity: 0; transform: translateX(30%) rotateY(12deg) scale(0.9);  filter: blur(8px); z-index: 1; }
+  .slide.prev-out { opacity: 0; transform: translateX(30%) rotateY(12deg) scale(0.9);  filter: blur(8px); z-index: 1; }
+  .slide.prev-in  { opacity: 0; transform: translateX(-30%) rotateY(-12deg) scale(0.9);filter: blur(8px); z-index: 1; }
+
+  .slide-inner { width: 100%; max-width: 1200px; position: relative; z-index: 2; }
+
+  .slide.active .anim-1, .slide.active .anim-2, .slide.active .anim-3,
+  .slide.active .anim-4, .slide.active .anim-5, .slide.active .anim-6 {
+    animation: slideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .slide.active .anim-1 { animation-delay: 0.3s; }
+  .slide.active .anim-2 { animation-delay: 0.45s; }
+  .slide.active .anim-3 { animation-delay: 0.6s; }
+  .slide.active .anim-4 { animation-delay: 0.75s; }
+  .slide.active .anim-5 { animation-delay: 0.9s; }
+  .slide.active .anim-6 { animation-delay: 1.05s; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+  .anim-1, .anim-2, .anim-3, .anim-4, .anim-5, .anim-6 { opacity: 0; }
+
+  .eyebrow { display: inline-block; color: var(--just-coral); font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; }
+  h1, h2, h3 { color: var(--just-blue); }
+  h1 { font-size: clamp(42px, 6vw, 84px); font-weight: 800; letter-spacing: -2px; line-height: 1.03; }
+  h2 { font-size: clamp(36px, 5vw, 68px); font-weight: 800; letter-spacing: -1.5px; line-height: 1.08; margin-bottom: 20px; }
+  h3 { font-size: clamp(22px, 2.5vw, 32px); font-weight: 700; letter-spacing: -0.5px; }
+  .accent { color: var(--just-coral); }
+  .lead { font-size: clamp(16px, 1.5vw, 20px); color: var(--text-muted); max-width: 780px; margin-bottom: 40px; }
+
+  .slide-hero { background: linear-gradient(135deg, #FAFAFF 0%, #EFEFFA 100%); text-align: center; }
+  .slide-hero::before, .slide-hero::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
+  .slide-hero::before { top: -200px; right: -200px; width: 700px; height: 700px; background: radial-gradient(circle, rgba(255, 107, 107, 0.18), transparent 70%); animation: floatBlob 14s ease-in-out infinite; }
+  .slide-hero::after { bottom: -300px; left: -200px; width: 800px; height: 800px; background: radial-gradient(circle, rgba(46, 45, 135, 0.14), transparent 70%); animation: floatBlob 16s ease-in-out infinite reverse; }
+  @keyframes floatBlob { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(60px, -40px) scale(1.15); } }
+  .hero-logo { width: 200px; margin: 0 auto 40px; display: block; }
+  .hero-meta { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 48px; }
+  .hero-meta-item { background: white; padding: 12px 22px; border-radius: 100px; font-size: 13px; font-weight: 600; color: var(--just-blue); box-shadow: var(--shadow); }
+  .hero-meta-item .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--just-coral); margin-right: 8px; vertical-align: middle; }
+
+  .team-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 40px; }
+  @media (max-width: 1100px) { .team-grid { grid-template-columns: repeat(2, 1fr); } }
+  .team-card { background: var(--bg-card); border-radius: 24px; padding: 28px; box-shadow: var(--shadow); border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .team-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--just-blue), var(--just-coral)); }
+  .team-card-badge { display: inline-block; padding: 5px 12px; border-radius: 100px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px; }
+  .badge-on { background: #FFE5E5; color: #C53030; }
+  .badge-n1 { background: #E0E7FF; color: var(--just-blue); }
+  .badge-n2 { background: #DDD6FE; color: #5B21B6; }
+  .badge-n3 { background: #FEF3C7; color: #92400E; }
+  .team-card h3 { font-size: 20px; margin-bottom: 6px; }
+  .role-people { color: var(--just-coral); font-size: 13px; font-weight: 600; margin-bottom: 14px; }
+  .team-card p { color: var(--text-muted); font-size: 13px; line-height: 1.55; }
+  .team-card ul { list-style: none; margin-top: 14px; }
+  .team-card ul li { color: var(--text-muted); font-size: 12.5px; padding: 5px 0 5px 18px; position: relative; line-height: 1.4; }
+  .team-card ul li::before { content: ''; position: absolute; left: 0; top: 12px; width: 5px; height: 5px; border-radius: 50%; background: var(--just-coral); }
+
+  .timeline { position: relative; padding-left: 40px; margin-top: 20px; }
+  .timeline::before { content: ''; position: absolute; left: 14px; top: 0; bottom: 0; width: 2px; background: linear-gradient(180deg, var(--just-blue), var(--just-coral)); }
+  .timeline-item { position: relative; padding-bottom: 28px; }
+  .timeline-item:last-child { padding-bottom: 0; }
+  .timeline-item::before { content: ''; position: absolute; left: -33px; top: 6px; width: 16px; height: 16px; border-radius: 50%; background: white; border: 3px solid var(--just-coral); box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.15); }
+  .timeline-item h4 { color: var(--just-blue); font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .timeline-item .stage { font-size: 11px; color: var(--just-coral); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 3px; }
+  .timeline-item p { color: var(--text-muted); font-size: 14px; line-height: 1.5; }
+
+  .sla-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 24px; }
+  @media (max-width: 900px) { .sla-grid { grid-template-columns: 1fr; } }
+  .sla-card { background: var(--bg-card); border-radius: 20px; padding: 28px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .sla-priority { display: inline-block; padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 700; margin-bottom: 14px; letter-spacing: 1px; }
+  .priority-p1 { background: #FEE2E2; color: #B91C1C; }
+  .priority-p2 { background: #FED7AA; color: #9A3412; }
+  .priority-p3 { background: #DBEAFE; color: #1E40AF; }
+  .sla-time { font-size: 48px; font-weight: 800; color: var(--just-blue); letter-spacing: -2px; line-height: 1; }
+  .sla-label { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .sla-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .sla-row:last-child { border-bottom: none; }
+  .sla-row span:first-child { color: var(--text-muted); font-size: 13px; }
+  .sla-row span:last-child { color: var(--just-blue); font-weight: 600; font-size: 13px; }
+
+  .rule-box { background: linear-gradient(135deg, var(--just-blue), var(--just-blue-dark)); color: white; padding: 48px; border-radius: 28px; position: relative; overflow: hidden; max-width: 900px; margin: 0 auto; }
+  .rule-box::before { content: ''; position: absolute; top: -50%; right: -10%; width: 500px; height: 500px; border-radius: 50%; background: radial-gradient(circle, rgba(255, 107, 107, 0.25), transparent 70%); }
+  .rule-box h4 { font-size: 14px; color: var(--just-coral-light); font-weight: 700; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; position: relative; }
+  .rule-box p { font-size: clamp(18px, 2vw, 24px); line-height: 1.5; position: relative; font-weight: 400; }
+  .rule-box strong { color: var(--just-coral-light); font-weight: 700; }
+
+  .doc-link { display: inline-flex; align-items: center; gap: 12px; background: var(--just-coral); color: white; padding: 18px 32px; border-radius: 100px; font-weight: 600; text-decoration: none; font-size: 15px; box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4); transition: transform 0.3s ease; }
+  .doc-link:hover { transform: translateY(-3px) scale(1.03); }
+  .doc-box { background: white; border-radius: 24px; padding: 28px 32px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-top: 16px; }
+  .doc-box ul { list-style: none; margin: 12px 0 18px; }
+  .doc-box ul li { padding: 6px 0 6px 24px; position: relative; color: var(--text); font-size: 13.5px; line-height: 1.5; }
+  .doc-box ul li::before { content: '→'; position: absolute; left: 0; color: var(--just-coral); font-weight: 700; }
+
+  .slide-ai { background: linear-gradient(135deg, var(--just-blue) 0%, var(--just-blue-dark) 100%); }
+  .slide-ai::before, .slide-ai::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
+  .slide-ai::before { top: -200px; left: -200px; width: 600px; height: 600px; background: radial-gradient(circle, rgba(255, 107, 107, 0.3), transparent 70%); animation: floatBlob 12s ease-in-out infinite; }
+  .slide-ai::after { bottom: -250px; right: -250px; width: 700px; height: 700px; background: radial-gradient(circle, rgba(74, 72, 184, 0.4), transparent 70%); animation: floatBlob 15s ease-in-out infinite reverse; }
+  .slide-ai h2, .slide-ai h1 { color: white; }
+  .slide-ai .eyebrow { color: var(--just-coral-light); }
+  .slide-ai .lead { color: rgba(255, 255, 255, 0.85); }
+  .ai-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 32px; }
+  @media (max-width: 900px) { .ai-steps { grid-template-columns: 1fr; } }
+  .ai-step { background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 20px; padding: 28px 24px; }
+  .ai-step-num { display: inline-block; width: 40px; height: 40px; border-radius: 50%; background: var(--just-coral); color: white; font-weight: 700; text-align: center; line-height: 40px; margin-bottom: 16px; font-size: 16px; }
+  .ai-step h4 { color: white; font-size: 19px; margin-bottom: 8px; }
+  .ai-step p { color: rgba(255, 255, 255, 0.82); font-size: 14px; margin: 0; line-height: 1.5; }
+
+  .emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 24px; }
+  @media (max-width: 1000px) { .emoji-grid { grid-template-columns: repeat(2, 1fr); } }
+  .emoji-card { background: var(--bg-card); border-radius: 20px; padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; align-items: flex-start; gap: 16px; }
+  .emoji-card .emoji { font-size: 32px; line-height: 1; }
+  .emoji-card h5 { color: var(--just-blue); font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .emoji-card p { color: var(--text-muted); font-size: 12.5px; line-height: 1.45; }
+
+  .criteria-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 32px; }
+  @media (max-width: 900px) { .criteria-grid { grid-template-columns: 1fr; } }
+  .criteria-card { background: var(--bg-card); border-radius: 24px; padding: 40px 28px; box-shadow: var(--shadow); border: 1px solid var(--border); text-align: center; }
+  .criteria-number { font-size: 72px; font-weight: 900; line-height: 1; background: linear-gradient(135deg, var(--just-blue), var(--just-coral)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 14px; }
+  .criteria-card h4 { color: var(--just-blue); font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+  .criteria-card p { color: var(--text-muted); font-size: 14px; line-height: 1.55; }
+
+  .slide-final { background: linear-gradient(135deg, var(--just-blue) 0%, var(--just-blue-dark) 100%); text-align: center; }
+  .slide-final::before, .slide-final::after { content: ''; position: absolute; border-radius: 50%; pointer-events: none; }
+  .slide-final::before { top: -200px; right: -200px; width: 700px; height: 700px; background: radial-gradient(circle, rgba(255, 107, 107, 0.25), transparent 70%); animation: floatBlob 14s ease-in-out infinite; }
+  .slide-final::after { bottom: -300px; left: -200px; width: 800px; height: 800px; background: radial-gradient(circle, rgba(74, 72, 184, 0.4), transparent 70%); animation: floatBlob 16s ease-in-out infinite reverse; }
+  .slide-final h1 { color: white; margin-bottom: 24px; }
+  .slide-final p { color: rgba(255, 255, 255, 0.85); font-size: 20px; max-width: 600px; margin: 0 auto 40px; }
+  .slide-final .final-logo { width: 120px; margin: 0 auto 32px; display: block; filter: brightness(0) invert(1); }
+
+  .controls { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; z-index: 100; }
+  .ctrl-btn { width: 56px; height: 56px; border-radius: 50%; background: white; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--shadow); transition: all 0.3s ease; color: var(--just-blue); }
+  .ctrl-btn:hover:not(:disabled) { background: var(--just-coral); color: white; transform: translateY(-3px); box-shadow: 0 12px 30px rgba(255, 107, 107, 0.35); border-color: var(--just-coral); }
+  .ctrl-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .ctrl-btn svg { width: 22px; height: 22px; }
+  .ctrl-counter { background: white; padding: 12px 20px; border-radius: 100px; font-size: 13px; font-weight: 700; color: var(--just-blue); box-shadow: var(--shadow); min-width: 70px; text-align: center; letter-spacing: 1px; }
+  .ctrl-counter .accent { color: var(--just-coral); }
+
+  .progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: rgba(46, 45, 135, 0.08); z-index: 99; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, var(--just-blue), var(--just-coral)); width: 0%; transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1); border-radius: 0 3px 3px 0; }
+
+  .topbar { position: fixed; top: 20px; left: 32px; z-index: 99; display: flex; align-items: center; gap: 12px; }
+  .topbar img { height: 26px; }
+  .topbar span { font-weight: 700; color: var(--just-blue); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+
+  .hint { position: fixed; top: 24px; right: 32px; z-index: 99; background: white; padding: 10px 18px; border-radius: 100px; font-size: 11px; font-weight: 600; color: var(--text-muted); box-shadow: var(--shadow); letter-spacing: 1px; animation: fadeOut 6s ease 4s forwards; }
+  .hint kbd { background: var(--just-blue); color: white; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-family: inherit; margin: 0 2px; }
+  @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+  @media (max-width: 768px) { .slide { padding: 80px 24px; } .topbar { left: 20px; top: 16px; } .hint { display: none; } }
+</style>
+</head>
+<body>
+
+<div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+<div class="topbar">
+  <img src="wearejust_it_logo.jpg" alt="Just">
+  <span>Operações</span>
+</div>
+
+<div class="hint"><kbd>←</kbd> <kbd>→</kbd> ou <kbd>espaço</kbd> para navegar</div>
+
+<div class="deck" id="deck">
+
+  <section class="slide slide-hero active" data-slide="1">
+    <div class="slide-inner" style="text-align:center; position: relative; z-index: 2;">
+      <img src="wearejust_it_logo.jpg" alt="Just" class="hero-logo anim-1">
+      <div class="eyebrow anim-2">Área de Operações · Suporte, CS e Atendimento</div>
+      <h1 class="anim-3">Workflow de <span class="accent">Resolução</span><br>via Slack</h1>
+      <p class="lead anim-4" style="margin: 24px auto 0;">Processo oficial de atendimento da Just — rastreabilidade, documentação obrigatória e clareza de responsabilidade do primeiro contato ao fechamento.</p>
+      <div class="hero-meta anim-5">
+        <div class="hero-meta-item"><span class="dot"></span>Versão 3.0</div>
+        <div class="hero-meta-item"><span class="dot"></span>Abril 2026</div>
+        <div class="hero-meta-item"><span class="dot"></span>Just Tecnologia</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="2">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">01 · Objetivo</div>
+      <h2 class="anim-2">Garantir que toda demanda<br>tenha um <span class="accent">dono</span> e uma resolução documentada.</h2>
+      <p class="lead anim-3">Este workflow estabelece o processo oficial de atendimento e resolução de problemas via Slack na Just. O objetivo é assegurar rastreabilidade ponta a ponta, documentação obrigatória das resoluções e responsabilidade clara sobre quem conduz cada demanda até o encerramento.</p>
+      <div class="rule-box anim-4" style="margin-top: 24px; padding: 28px 36px;">
+        <h4>Visão de futuro</h4>
+        <p>Toda resolução documentada alimenta a base de conhecimento que vai <strong>treinar uma IA</strong> para, no futuro, <strong>automatizar o suporte com um bot</strong> capaz de resolver demandas com o mesmo padrão do time.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="3">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">02 · Estrutura da Equipe</div>
+      <h2 class="anim-2">Quatro frentes,<br>uma cadeia clara.</h2>
+      <p class="lead anim-3">Uma frente dedicada a clientes em implantação (ON) e três níveis para clientes em operação. Hugo e Dane atuam tanto em N1 quanto em N2 — o que define o nível é a característica da demanda.</p>
+      <div class="team-grid">
+        <div class="team-card anim-3">
+          <div class="team-card-badge badge-on">ON · Onboarding</div>
+          <h3>Implantação</h3>
+          <div class="role-people">Bruna</div>
+          <p>Interlocutora única durante o onboarding (até 90 dias).</p>
+          <ul>
+            <li>Elabora o manual do cliente</li>
+            <li>Conduz o treinamento</li>
+            <li>Acompanha até a autonomia</li>
+          </ul>
+        </div>
+        <div class="team-card anim-4">
+          <div class="team-card-badge badge-n1">N1 · Operacional</div>
+          <h3>Suporte Operacional</h3>
+          <div class="role-people">Hugo / Dane</div>
+          <p>Triagem, classificação e resolução de demandas operacionais.</p>
+          <ul>
+            <li>Classifica prioridade (P1/P2/P3)</li>
+            <li>Resolve dúvidas simples</li>
+            <li>Escala para N2 quando necessário</li>
+          </ul>
+        </div>
+        <div class="team-card anim-5">
+          <div class="team-card-badge badge-n2">N2 · Técnico</div>
+          <h3>Análise Técnica</h3>
+          <div class="role-people">Hugo / Dane</div>
+          <p>Investigação técnica de bugs, banco de dados e código.</p>
+          <ul>
+            <li>Investiga logs e queries</li>
+            <li>Diagnostica causa raiz</li>
+            <li>Aciona N3 quando necessário</li>
+          </ul>
+        </div>
+        <div class="team-card anim-6">
+          <div class="team-card-badge badge-n3">N3 · Engenharia</div>
+          <h3>Engenharia Avançada</h3>
+          <div class="role-people">Engenheiros</div>
+          <p>Apoio técnico avançado — atua, documenta, nunca finaliza.</p>
+          <ul>
+            <li>Hotfixes, deploys, infra</li>
+            <li>Documenta solução na planilha</li>
+            <li>Reporta ao escalador</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="4">
+    <div class="slide-inner" style="text-align:center;">
+      <div class="eyebrow anim-1">★ Regra do Dono</div>
+      <h2 class="anim-2">Quem escala para o N3,<br><span class="accent">conduz até o fim.</span></h2>
+      <div class="rule-box anim-3" style="margin-top: 40px;">
+        <h4>Nunca esqueça</h4>
+        <p>Quem escala para o N3 é o <strong>dono</strong> da demanda e a conduz até o encerramento. O <strong>N3 nunca finaliza</strong> um chamado — quem dá o ✅ no Slack é sempre quem escalou (N1 ou N2), após validar que o problema foi de fato resolvido. A <strong>planilha, porém, é preenchida por quem resolveu tecnicamente</strong> — se foi o N3 quem aplicou a correção, é o N3 quem documenta a solução.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="5">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">03 · Fluxo do Workflow</div>
+      <h2 class="anim-2">Da abertura ao fechamento.</h2>
+      <div class="timeline">
+        <div class="timeline-item anim-3">
+          <div class="stage">Etapa 1 · Automática</div>
+          <h4>Abertura</h4>
+          <p>Cliente preenche o formulário no Slack. O Workflow Builder envia automaticamente a demanda para a planilha.</p>
+        </div>
+        <div class="timeline-item anim-3">
+          <div class="stage">Etapa 2 · N1</div>
+          <h4>Triagem e Classificação</h4>
+          <p>O N1 classifica prioridade (P1/P2/P3) e identifica se é dúvida operacional ou problema técnico.</p>
+        </div>
+        <div class="timeline-item anim-4">
+          <div class="stage">Etapa 3 · N2</div>
+          <h4>Análise Técnica · Assume Ownership</h4>
+          <p>O N2 investiga logs, banco, código e configurações. Resolve sozinho ou aciona o N3 mantendo a propriedade da demanda.</p>
+        </div>
+        <div class="timeline-item anim-5">
+          <div class="stage">Etapa 4 · N3</div>
+          <h4>Execução com Apoio Técnico</h4>
+          <p>N2 repassa a planilha para o N3. O engenheiro executa a correção (hotfix, deploy, ajuste de infra) e <strong>preenche ele mesmo a solução na planilha</strong>, descrevendo de forma técnica e minuciosa tudo o que foi feito. Em seguida reporta na thread.</p>
+        </div>
+        <div class="timeline-item anim-6">
+          <div class="stage">Etapa 5 · Obrigatório</div>
+          <h4>Fechamento e Documentação</h4>
+          <p><strong>Quem resolveu de fato o problema é quem preenche a planilha</strong> — seja N1, N2, N3 ou ON. Quem escalou valida a resolução e marca ✅ no Slack. Sem documentação técnica minuciosa = chamado aberto.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="6">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">04 · SLA</div>
+      <h2 class="anim-2">Acordos de<br>Nível de Serviço.</h2>
+      <p class="lead anim-3">Prazos por prioridade aplicáveis a todos os clientes da Just.</p>
+      <div class="sla-grid">
+        <div class="sla-card anim-4">
+          <span class="sla-priority priority-p1">P1 · Crítico</span>
+          <div class="sla-time">4h</div>
+          <div class="sla-label">Resolução máxima</div>
+          <div style="margin-top: 20px;">
+            <div class="sla-row"><span>Resposta inicial</span><span>15 min</span></div>
+            <div class="sla-row"><span>Atualizações</span><span>A cada 1h</span></div>
+            <div class="sla-row"><span>Escalonamento</span><span>Imediato</span></div>
+          </div>
+        </div>
+        <div class="sla-card anim-5">
+          <span class="sla-priority priority-p2">P2 · Alta</span>
+          <div class="sla-time">8h</div>
+          <div class="sla-label">Resolução máxima</div>
+          <div style="margin-top: 20px;">
+            <div class="sla-row"><span>Resposta inicial</span><span>1 hora</span></div>
+            <div class="sla-row"><span>Atualizações</span><span>A cada 2h</span></div>
+            <div class="sla-row"><span>Escalonamento</span><span>Após 4h</span></div>
+          </div>
+        </div>
+        <div class="sla-card anim-6">
+          <span class="sla-priority priority-p3">P3 · Média</span>
+          <div class="sla-time">24h</div>
+          <div class="sla-label">Resolução máxima</div>
+          <div style="margin-top: 20px;">
+            <div class="sla-row"><span>Resposta inicial</span><span>4 horas</span></div>
+            <div class="sla-row"><span>Atualizações</span><span>Diárias</span></div>
+            <div class="sla-row"><span>Escalonamento</span><span>Após 24h</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="7">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">05 · Documentação</div>
+      <h2 class="anim-2">Sem registro,<br>chamado <span class="accent">aberto</span>.</h2>
+      <p class="lead anim-3"><strong>Quem preenche a planilha é quem resolveu de fato o problema</strong> — não quem escalou. O registro precisa ser técnico, minucioso e reprodutível: outra pessoa do time deve conseguir aplicar a mesma solução lendo apenas a planilha.</p>
+      <div class="doc-box anim-4">
+        <h3>Padrão técnico mínimo de registro</h3>
+        <ul>
+          <li><strong>Contexto e problema:</strong> relato literal do cliente, ambiente afetado (produção, homolog, cliente X), data e horário de início, escopo de impacto (usuários, módulos, integrações).</li>
+          <li><strong>Diagnóstico:</strong> hipóteses levantadas, evidências observadas (IDs de log, stack trace, códigos de erro HTTP, mensagens do banco), ferramentas utilizadas na investigação (Datadog, Sentry, Kibana, consultas SQL).</li>
+          <li><strong>Causa raiz:</strong> explicação técnica objetiva do porquê o problema ocorreu — não apenas o sintoma. Ex.: deadlock em tabela X, race condition no serviço Y, config ausente no .env, migration não aplicada, cache inválido.</li>
+          <li><strong>Solução aplicada passo a passo:</strong> comandos executados, queries SQL com <code>WHERE</code> completo, trechos de código alterados (arquivo + linha), endpoints chamados, parâmetros enviados, deploys realizados (branch, commit, ambiente), flags ativadas.</li>
+          <li><strong>Validação:</strong> como foi confirmado que o problema foi resolvido (teste executado, métrica observada, confirmação do cliente na thread).</li>
+          <li><strong>Prevenção / follow-up:</strong> tarefa técnica aberta para evitar recorrência (ticket de backlog, alerta criado, documentação atualizada).</li>
+          <li><strong>Rastreabilidade:</strong> quem atuou (N1, N2, N3, ON), link da thread no Slack, link do PR/commit, link do ticket no backlog.</li>
+        </ul>
+        <p style="margin-top:16px;color:var(--text-muted);font-size:13px;"><em>Descrições genéricas ("ajustado no banco", "corrigido no código", "resolvido com o cliente") são consideradas registro inválido e bloqueiam o fechamento do chamado.</em></p>
+        <a class="doc-link" href="https://docs.google.com/spreadsheets/d/1mZ6KWlB06Rm7NF9D4NeeKwl7SIp6Run3VepvdRB8wVc/edit?gid=0#gid=0" target="_blank">
+          Abrir Planilha de Controle de Resoluções →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide slide-ai" data-slide="8">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">06 · O que vem por aí</div>
+      <h2 class="anim-2">Treinando IA para o<br>futuro do nosso suporte.</h2>
+      <p class="lead anim-3">A planilha é a ferramenta atual em caráter temporário. Estamos avaliando plataformas dedicadas — e cada solução bem documentada hoje é dado de treinamento amanhã.</p>
+      <div class="ai-steps">
+        <div class="ai-step anim-4">
+          <div class="ai-step-num">1</div>
+          <h4>Hoje</h4>
+          <p>Registro disciplinado de cada resolução na planilha, com descrição completa de causa raiz e solução.</p>
+        </div>
+        <div class="ai-step anim-5">
+          <div class="ai-step-num">2</div>
+          <h4>Próximo passo</h4>
+          <p>IA atuando como copiloto do Suporte: sugere soluções para demandas semelhantes às já resolvidas.</p>
+        </div>
+        <div class="ai-step anim-6">
+          <div class="ai-step-num">3</div>
+          <h4>Visão futura</h4>
+          <p>Bot de suporte autônomo, capaz de resolver demandas recorrentes e substituir o atendimento humano em casos mapeados.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="9">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">07 · Boas Práticas no Slack</div>
+      <h2 class="anim-2">Linguagem comum<br>do time.</h2>
+      <p class="lead anim-3">Emojis padronizados para sinalizar status de chamados em qualquer thread.</p>
+      <div class="emoji-grid">
+        <div class="emoji-card anim-4">
+          <div class="emoji">👀</div>
+          <div><h5>Em análise</h5><p>Chamado visto. Use assim que o N1 identificar o ticket.</p></div>
+        </div>
+        <div class="emoji-card anim-4">
+          <div class="emoji">✅</div>
+          <div><h5>Resolvido e documentado</h5><p>Apenas após resolver E preencher a planilha.</p></div>
+        </div>
+        <div class="emoji-card anim-5">
+          <div class="emoji">⚠️</div>
+          <div><h5>Escalado</h5><p>Passou para o próximo nível (N1→N2 ou N2→N3).</p></div>
+        </div>
+        <div class="emoji-card anim-5">
+          <div class="emoji">🔴</div>
+          <div><h5>P1 · Crítico</h5><p>Problema com impacto total — máxima prioridade.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-slide="10">
+    <div class="slide-inner">
+      <div class="eyebrow anim-1">08 · Critérios de Migração</div>
+      <h2 class="anim-2">Quando o cliente<br>sai da Bruna.</h2>
+      <p class="lead anim-3">Parâmetros objetivos para mover o cliente de ON (implantação) para o Suporte (N1/N2).</p>
+      <div class="criteria-grid">
+        <div class="criteria-card anim-4">
+          <div class="criteria-number">1</div>
+          <h4>Mês mínimo</h4>
+          <p>Todo cliente novo permanece obrigatoriamente com a Bruna por no mínimo 1 mês, sem migração automática.</p>
+        </div>
+        <div class="criteria-card anim-5">
+          <div class="criteria-number">2</div>
+          <h4>Gatilho por perfil</h4>
+          <p>Após o 1º mês, se por <strong>2 semanas seguidas</strong> ≤20% das demandas ficarem na Bruna e ≥80% no Suporte, migração imediata.</p>
+        </div>
+        <div class="criteria-card anim-6">
+          <div class="criteria-number">3</div>
+          <h4>Limite máximo</h4>
+          <p>Caso o gatilho não dispare, a migração ocorre <strong>compulsoriamente em 90 dias</strong> — limite absoluto.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide slide-final" data-slide="11">
+    <div class="slide-inner" style="position:relative; z-index: 2; display:flex; align-items:center; justify-content:center; height:100%;">
+      <img src="time.png" alt="Time" style="display:block; max-width: 95%; max-height: 90vh; width:auto; height:auto; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);" class="anim-2" />
+    </div>
+  </section>
+
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn" id="prevBtn" aria-label="Anterior">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+  </button>
+  <div class="ctrl-counter" id="ctrlCounter" style="cursor:pointer; user-select:none;" title="Clique para navegar (ou pressione G)"><span id="curr">1</span><span class="accent"> / </span><span id="total">11</span></div>
+  <button class="ctrl-btn" id="nextBtn" aria-label="Próximo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </button>
+</div>
+
+<div id="slidePicker" style="position:fixed; inset:0; background:rgba(10,14,40,0.85); backdrop-filter:blur(12px); z-index:1000; display:none; align-items:center; justify-content:center; padding:40px; overflow:auto;">
+  <div style="max-width:1100px; width:100%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; color:white;">
+      <h3 style="margin:0; font-size:22px; font-weight:700;">Ir para slide</h3>
+      <button id="closePicker" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; width:40px; height:40px; border-radius:50%; font-size:20px; cursor:pointer;">✕</button>
+    </div>
+    <div id="pickerGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:16px;"></div>
+    <p style="color:rgba(255,255,255,0.6); margin-top:24px; font-size:13px; text-align:center;">Dica: pressione <b>G</b> para abrir • <b>1-9</b> para pular direto • <b>Esc</b> para fechar</p>
+  </div>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const currSpan = document.getElementById('curr');
+  const totalSpan = document.getElementById('total');
+  const progressBar = document.getElementById('progressBar');
+
+  totalSpan.textContent = total;
+  let currentIndex = 0;
+  let isAnimating = false;
+
+  function goTo(newIndex) {
+    if (isAnimating) return;
+    if (newIndex < 0 || newIndex >= total || newIndex === currentIndex) return;
+    isAnimating = true;
+    const direction = newIndex > currentIndex ? 'next' : 'prev';
+    const current = slides[currentIndex];
+    const next = slides[newIndex];
+
+    next.classList.remove('active');
+    next.classList.add(direction === 'next' ? 'next-in' : 'prev-in');
+    void next.offsetWidth;
+
+    current.classList.remove('active');
+    current.classList.add(direction === 'next' ? 'next-out' : 'prev-out');
+
+    requestAnimationFrame(() => {
+      next.classList.remove('next-in', 'prev-in');
+      next.classList.add('active');
+    });
+
+    setTimeout(() => {
+      current.classList.remove('next-out', 'prev-out');
+      isAnimating = false;
+    }, 900);
+
+    currentIndex = newIndex;
+    update();
+  }
+
+  function update() {
+    currSpan.textContent = currentIndex + 1;
+    prevBtn.disabled = currentIndex === 0;
+    nextBtn.disabled = currentIndex === total - 1;
+    progressBar.style.width = ((currentIndex + 1) / total * 100) + '%';
+  }
+
+  prevBtn.addEventListener('click', () => goTo(currentIndex - 1));
+  nextBtn.addEventListener('click', () => goTo(currentIndex + 1));
+
+  // Slide picker
+  const slideTitles = [
+    'Capa — Workflow de Resolução via Slack',
+    'Objetivo — Dono e resolução documentada',
+    'Quatro frentes, uma cadeia clara',
+    'Quem escala para o N3, conduz até o fim',
+    'Da abertura ao fechamento',
+    'Acordos de Nível de Serviço (SLA)',
+    'Sem registro, chamado aberto',
+    'Treinando IA para o futuro do suporte',
+    'Linguagem comum do time',
+    'Quando o cliente sai da Bruna',
+    'Obrigado'
+  ];
+  const picker = document.getElementById('slidePicker');
+  const pickerGrid = document.getElementById('pickerGrid');
+  const ctrlCounter = document.getElementById('ctrlCounter');
+  const closePicker = document.getElementById('closePicker');
+
+  slideTitles.forEach((title, i) => {
+    const card = document.createElement('button');
+    card.dataset.idx = i;
+    card.style.cssText = 'text-align:left; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); color:white; padding:18px; border-radius:14px; cursor:pointer; transition:all 0.2s; font-family:inherit;';
+    card.innerHTML = '<div style="font-size:32px; font-weight:800; color:#FF6B6B; margin-bottom:8px;">' + (i+1) + '</div><div style="font-size:14px; line-height:1.4; opacity:0.9;">' + title + '</div>';
+    card.addEventListener('mouseenter', () => { card.style.background = 'rgba(255,255,255,0.18)'; card.style.transform = 'translateY(-2px)'; });
+    card.addEventListener('mouseleave', () => { card.style.background = 'rgba(255,255,255,0.08)'; card.style.transform = 'translateY(0)'; });
+    card.addEventListener('click', () => { closePickerFn(); goTo(i); });
+    pickerGrid.appendChild(card);
+  });
+
+  function openPicker() { picker.style.display = 'flex'; }
+  function closePickerFn() { picker.style.display = 'none'; }
+  ctrlCounter.addEventListener('click', openPicker);
+  closePicker.addEventListener('click', closePickerFn);
+  picker.addEventListener('click', (e) => { if (e.target === picker) closePickerFn(); });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closePickerFn(); return; }
+    if (picker.style.display === 'flex') return;
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); goTo(currentIndex + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); goTo(currentIndex - 1); }
+    else if (e.key === 'Home') { goTo(0); }
+    else if (e.key === 'End') { goTo(total - 1); }
+    else if (e.key === 'g' || e.key === 'G') { openPicker(); }
+    else if (/^[1-9]$/.test(e.key)) { goTo(parseInt(e.key) - 1); }
+    else if (e.key === '0') { goTo(9); }
+  });
+
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const diff = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(diff) > 60) {
+      if (diff < 0) goTo(currentIndex + 1);
+      else goTo(currentIndex - 1);
+    }
+  }, { passive: true });
+
+  update();
+</script>
+
+</body>
+</html>
